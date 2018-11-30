@@ -1,0 +1,4 @@
+JOGO DA VELHA ESTENDIUDO
+
+Estre programa é um jogo da Velha com inteface SDL.
+Possui novas opções para dimencionar a matriz além de novos casos de vitoria.

@@ -1,4 +1,4 @@
-#include "libs/menu.h"
+#include "include/menu.h"
 
 /* Inicializa o jogo */
 int main(void){

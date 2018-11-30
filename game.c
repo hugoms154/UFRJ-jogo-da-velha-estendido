@@ -1,40 +1,13 @@
-#include "libs/game.h"
 
-/* Verifica se ha ganhador */
-char checaVitoria(Velha *v, int N){
-  char ref;
-  int cont;
+#include "include/game.h"
 
-  // Verifica colunas
-  for(int x=0; x<N; x++){
-    ref = v[N*x].status;
-    cont = 0;
-    for(int y=0; y<N; y++){
-      int i = (N*x) + y;
-      if(v[i].status == ref){
-        cont++;
-      }
-    }
-    if((ref == X || ref == O) && cont == N){
-      return ref;
-    }
-  }
-  // Verifica linhas
-  for(int y=0; y<N; y++){
-    ref = v[y].status;
-    cont = 0;
-    for(int x=0; x<N; x++){
-      int i = (N*x) + y;
-      if(v[i].status == ref){
-        cont++;
-      }
-    }
-    if((ref == X || ref == O) && cont == N){
-      return ref;
-    }
-  }
-  return ref;
+/* Gerador de numeros aleatorios */
+int gna(int N){
+    srand (time(NULL)); // inicializa o gerador de numeros
+	return rand() % DIM*N; // Retorna um numero pseudo-aleatorio
 }
+
+/* Funcao responsavel �por inicializar o jogo */
 void start(int N, int J){
     printf("\nJogo Inicializado!\n");
 
@@ -49,7 +22,7 @@ void start(int N, int J){
     SDL_SetColorKey(xis,SDL_SRCCOLORKEY,SDL_MapRGB(tela->format,0,255,0));
     SDL_SetColorKey(bola,SDL_SRCCOLORKEY, SDL_MapRGB(tela->format,0,255,0));
 
-    int running = 1; // Variavel de Controle
+    int running = 1, valida; // Variavel de Controle
     int turno=0, fimJogo=0; // Variaveis Auxiliares
     const int fps = FPS;  // Taxa de Frames por Segundo
     int mouse[2]; // Vetor para posicao do mouse
@@ -58,7 +31,7 @@ void start(int N, int J){
 
     iniciaVelha(velha, tela, N);
 
-   //aqui começa o loop do jogo e do SDL.
+    //aqui comeca o loop do jogo e do SDL.
     while(running){
         start = SDL_GetTicks();
         SDL_Event event;
@@ -66,7 +39,7 @@ void start(int N, int J){
         {
             switch(event.type)
             {
-                case SDL_QUIT: // Botão de encerrar programa
+                case SDL_QUIT: // Botao de encerrar programa
                 {
                         printf("Programa encerrado!\n");
                         running=0;
@@ -83,8 +56,9 @@ void start(int N, int J){
                 {
                     mouse[0]=event.button.x;
                     mouse[1]=event.button.y;
-                    jogada(velha, mouse, &turno, N);
-
+                    
+                    jogada(velha, mouse, &turno, N, J);
+                    
                     fimJogo = checaVitoria(velha, N);
                     if(turno >= (2*N)-1)
                     {
@@ -102,13 +76,20 @@ void start(int N, int J){
                     else if(turno==(N*N)-1 && fimJogo==LIVRE)
                     {
                         printf("Fim de jogo o jogo empatou!");
-                            running=0;
+                        running=0;
                     }
+                    if(J==1 && turno%2 && fimJogo == LIVRE){
+                    	do {
+                        	mouse[0]=gna(N);
+                        	mouse[1]=gna(N);
+                            valida = jogada(velha, mouse, &turno, N, J);
+                        } while(!valida);
+					}
                     break;
                 }
             }
         }
-        //logica e redenrização
+        //logica e redenrizacaoo
         for(int i = 0; i<N*N; i++){
             if(velha[i].status == X){
                 SDL_BlitSurface(xis,NULL,tela,&velha[i].rect);
@@ -120,13 +101,27 @@ void start(int N, int J){
         if((1000/fps)>SDL_GetTicks()-start)
             SDL_Delay(1000/fps-(SDL_GetTicks()-start));
     }
+    // Mantem janela visivel apos o termino do jogo 
+    while(fimJogo!=LIVRE)
+    {
+        SDL_Event event;
+        if(SDL_PollEvent(&event))
+        {
+            if(event.type == SDL_QUIT) // Botao de encerrar programa
+            {
+                printf("Programa encerrado!\n");
+                fimJogo=LIVRE;
+            }
+        }
+    }
     getchar();
     SDL_FreeSurface(xis);
     SDL_FreeSurface(bola);
     SDL_Quit();
 }
 /* Funcao que monta o tabuleiro */
-void iniciaVelha(Velha *velha, SDL_Surface *tela, int N){
+void iniciaVelha(Velha *velha, SDL_Surface *tela, int N)
+{
     // Pecorre vetor inicialicando celulas
     for(int x=0, cont=0; x<82*N; x+=82){
         for(int y=0; y<82*N; y+=82, cont++){
@@ -144,7 +139,8 @@ void iniciaVelha(Velha *velha, SDL_Surface *tela, int N){
     }
 }
 // Faz uma Jogada
-void jogada(Velha *velha, int *mouse, int *turno, int N){
+int jogada(Velha *velha, int *mouse, int *turno, int N, int J)
+{
   // Precisa pecorre lista anotando posições  na matris
     int i, x, y; // Variaveis Auxiliares
     x = mouse[0]/DIM;
@@ -162,9 +158,14 @@ void jogada(Velha *velha, int *mouse, int *turno, int N){
         printf("Jogada Valida, jogador X!\n");
         velha[i].status=X;
         *turno=*turno+1;
-    } else {
-        printf("Jogada invalida, posicao ja registrada! favor escolher outra.\n");
+    } else if(J==1 && *turno%2){
+        return 0;
     }
+    else{
+        printf("Jogada invalida, posicao ja registrada! favor escolher outra.\n");
+        return 0;
+    }
+    return 1;
 }
 /* Altera cor da Celula */
 void statusCelula(Velha *velha, int *mouse, SDL_Surface *tela, int N)
@@ -194,6 +195,118 @@ void statusCelula(Velha *velha, int *mouse, SDL_Surface *tela, int N)
       }
     }
 }
-//int main(void){
-//	return 0;
-//}
+/* Verifica se ha ganhador */
+char checaVitoria(Velha *v, int N)
+{
+	char ref; // Referencia para comparacoes
+	int cont, delta, i; // Interadores
+
+  	// Verifica colunas
+  	for(int x=0; x<N; x++){
+    	ref = v[N*x].status;
+    	cont = 0;
+    	for(int y=0; y<N; y++){
+    	  	i = (N*x) + y;
+      		if(v[i].status == ref){
+       			cont++;
+      		}
+    	}
+    	if((ref == X || ref == O) && cont == N){
+      		return ref;
+    	}
+	}
+  	// Verifica linhas
+  	for(int y=0; y<N; y++){
+    	ref = v[y].status;
+    	cont = 0;
+    	for(int x=0; x<N; x++){
+    	  i = (N*x) + y;
+    	  if(v[i].status == ref){
+    	    cont++;
+    	  }
+    	}
+    	if((ref == X || ref == O) && cont == N){
+     		return ref;
+    	}
+  	}
+  	/*
+	 * A VERIFICACAO RETORNA ALGUNS ERROS {CORRIGIR}
+	 */
+  	// Verifica diagonais da esqueda para a direita
+  	for(int n=1; n<N; n++){
+  		cont=1;
+  		delta=1;
+  		ref = v[N*(n-1)].status;
+  		for(int y=1 , x=n; y<N; y++, x+=delta){
+  			i = (N*x) + y;
+			if(ref == v[i].status){
+  				cont++;
+			}
+  			//cont++;
+			if(y<N-1 && x==N-1){
+				delta *= -1;
+			}
+		}
+		if((ref == X || ref == O) && cont == N){
+			
+     		return ref;
+    	}
+	}
+	// Verifica diagonais da direita para a esqueda
+	for(int n=N-2; n>=0; n--){
+  		cont=1;
+  		delta=-1;
+  		ref = v[N*(n+1)].status;
+  		for(int y=1 , x=n; y<N; y++, x+=delta){
+  			i = (N*x) + y;
+  			if(ref == v[i].status){
+  				cont++;
+			}
+			if(y<N-1 && !x){
+				delta *= -1;
+			}
+		}
+		if((ref == X || ref == O) && cont == N){
+     		return ref;
+    	}
+	}
+	// verifica diagonais laterais descendo
+  	for(int n=1; n<N; n++){
+  		cont=1;
+  		delta=1;
+  		ref = v[N*(n-1)].status;
+  		for(int x=1 , y=n; x<N; x++, y+=delta){
+  			i = (N*x) + y;
+			if(ref == v[i].status){
+  				cont++;
+			}
+  			//cont++;
+			if(y<N-1 && x==N-1){
+				delta *= -1;
+			}
+		}
+		if((ref == X || ref == O) && cont == N){
+			
+     		return ref;
+    	}
+	}
+	// Verifica diagonais laterais subindo
+	for(int n=N-2; n>=0; n--){
+  		cont=1;
+  		delta=-1;
+  		ref = v[N*(n+1)].status;
+  		for(int x=1 , y=n; x<N; x++, y+=delta){
+  			i = (N*x) + y;
+  			if(ref == v[i].status){
+  				cont++;
+			}
+			if(y<N-1 && !x){
+				delta *= -1;
+			}
+		}
+		if((ref == X || ref == O) && cont == N){
+     		return ref;
+    	}
+	}
+  	return ref;
+}
